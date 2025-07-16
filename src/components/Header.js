@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from './Icon'; // Custom Icon component
+import { Feather } from '@expo/vector-icons'; 
 
 /**
  * Header component displayed at the top of the app.
@@ -15,7 +16,7 @@ const Header = ({ title, currentUser }) => (
     <Text style={styles.headerTitle}>{title}</Text>
     {currentUser && (
       <View style={styles.userInfo}>
-        <Icon name="User" size={16} color="#6B7280" />
+        <Feather name="user" size={16} color="#6B7280" />
         <Text style={styles.userName}>
           {currentUser.email ? currentUser.email.split('@')[0] : 'User'}
         </Text>

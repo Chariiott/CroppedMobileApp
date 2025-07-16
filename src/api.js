@@ -1,9 +1,16 @@
+// aquaponic-assistant/src/api.js
 
+// Declare API_BASE_URL as a mutable variable
+let API_BASE_URL = 'https://0993-2a09-bac5-55f9-18d2-00-279-4b.ngrok-free.app/api'; // Default fallback URL
 
-const API_BASE_URL = 'https://c24d-49-245-111-44.ngrok-free.app/api';
-
-
-
+/**
+ * Sets the API base URL dynamically.
+ * @param {string} newUrl - The new base URL to use for API calls.
+ */
+export const setApiBaseUrl = (newUrl) => {
+  API_BASE_URL = newUrl;
+  console.log("API Base URL set to:", API_BASE_URL);
+};
 
 /**
  * Fetches data from a given API endpoint.
@@ -15,6 +22,11 @@ const API_BASE_URL = 'https://c24d-49-245-111-44.ngrok-free.app/api';
  * @throws {Error} - Throws an error if the fetch fails or response is not OK.
  */
 export const fetchDataFromApi = async (endpoint, method = 'GET', body = null, token = null) => {
+  // Ensure API_BASE_URL is set before making a call
+  if (!API_BASE_URL || API_BASE_URL === 'YOUR_DEFAULT_PLACEHOLDER_URL') {
+    throw new Error("API Base URL is not configured. Please set it in Settings.");
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 

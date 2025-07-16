@@ -67,20 +67,20 @@ const HomeScreen = () => {
         <Text style={styles.cardTitle}>Quick Actions</Text>
         <View style={styles.actionGrid}>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#22C55E' }]}>
-            <Icon name="Camera" size={20} color="white" />
+            <Icon name="camera" size={20} color="white" type="feather"/>
             <Text style={styles.actionButtonText}>Take Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}>
-            <Icon name="Learning" size={20} color="white" />
-            <Text style={styles.actionButtonText}>View Guides</Text>
+            <Icon name="insights" size={20} color="white" type="matico"/>
+            <Text style={styles.actionButtonText}>View Insights</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}>
-            <Icon name="ManualInput" size={20} color="white" />
-            <Text style={styles.actionButtonText}>Manual Log</Text>
+            <Icon name="add-chart" size={20} color="white" type="matico"/>
+            <Text style={styles.actionButtonText}>Add Data</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}>
-            <Icon name="Settings" size={20} color="white" />
-            <Text style={styles.actionButtonText}>System Setup</Text>
+            <Icon name="settings" size={20} color="white" type="feather"/>
+            <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -89,15 +89,15 @@ const HomeScreen = () => {
         <Text style={styles.cardTitle}>Latest Alerts</Text>
         <View style={styles.alertList}>
           <View style={styles.alertItem}>
-            <Icon name="Bell" size={20} color="#DC2626" />
+            <Icon name="bell" size={20} color="#DC2626" type="feather"/>
             <Text style={styles.alertText}><Text style={styles.alertTextBold}>Alert:</Text> pH level low (5.8). Action required!</Text>
           </View>
           <View style={styles.alertItem}>
-            <Icon name="Bell" size={20} color="#EA580C" />
+            <Icon name="bell" size={20} color="#EA580C" type="feather"/>
             <Text style={styles.alertText}><Text style={styles.alertTextBold}>Warning:</Text> Water temperature rising (29.5°C).</Text>
           </View>
           <View style={styles.alertItem}>
-            <Icon name="Bell" size={20} color="#4B5563" />
+            <Icon name="bell" size={20} color="#4B5563" type="feather"/>
             <Text style={styles.alertText}><Text style={styles.alertTextBold}>Info:</Text> Nutrients added successfully.</Text>
           </View>
         </View>

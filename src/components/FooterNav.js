@@ -1,13 +1,13 @@
-// Updated FooterNav.js to respect Android navigation insets dynamically
+// src/components/FooterNav.js
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from './Icon'; // Custom Icon component
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from './Icon';
 
 const FooterNav = ({ activePage, setActivePage }) => {
   const insets = useSafeAreaInsets();
 
-  const NavItem = ({ iconName, label, pageName }) => (
+  const NavItem = ({ iconName, label, pageName, iconType }) => (
     <TouchableOpacity
       style={[
         styles.navItem,
@@ -15,7 +15,12 @@ const FooterNav = ({ activePage, setActivePage }) => {
       ]}
       onPress={() => setActivePage(pageName)}
     >
-      <Icon name={iconName} size={24} color={activePage === pageName ? '#10B981' : '#6B7280'} />
+      <Icon 
+        name={iconName}
+        size={24}
+        color={activePage === pageName ? '#10B981' : '#6B7280'}
+        type={iconType} // This determines which icon set to use
+      />
       <Text style={[styles.navItemLabel, activePage === pageName ? styles.navItemLabelActive : {}]}>
         {label}
       </Text>
@@ -23,12 +28,12 @@ const FooterNav = ({ activePage, setActivePage }) => {
   );
 
   return (
-    <View style={[styles.footerNav, { paddingBottom: insets.bottom }]}> {/* Respect Android nav bar */}
-      <NavItem iconName="Home" label="Home" pageName="home" />
-      <NavItem iconName="Dashboard" label="Dashboard" pageName="dashboard" />
-      <NavItem iconName="ManualInput" label="Manual Input" pageName="manual-input" />
-      <NavItem iconName="Learning" label="Learning" pageName="learning" />
-      <NavItem iconName="Settings" label="Settings" pageName="settings" />
+    <View style={[styles.footerNav, { paddingBottom: insets.bottom }]}> 
+      <NavItem iconName="home" label="Home" pageName="home" iconType="feather" />
+      <NavItem iconName="graph" label="Dashboard" pageName="dashboard" iconType="octi" />
+      <NavItem iconName="add-chart" label="Add Data" pageName="manual-input" iconType="matico" />
+      <NavItem iconName="insights" label="Insights" pageName="learning" iconType="matico" />
+      <NavItem iconName="settings" label="Settings" pageName="settings" iconType="feather" />
     </View>
   );
 };
