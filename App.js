@@ -21,6 +21,11 @@ import FooterNav from './src/components/FooterNav.js'; // Ensure correct import 
 // Import setApiBaseUrl from your api.js
 import { setApiBaseUrl } from './src/api';
 
+import bcrypt from 'bcryptjs';
+
+
+
+
 const { height } = Dimensions.get('window'); // Get screen height for responsive padding
 
 // Define a key for AsyncStorage
@@ -53,7 +58,10 @@ const RootAppContent = ({ activePage, setActivePage, currentUser, handleAuthSucc
       ]}>
         {activePage === 'home' && <HomeScreen />}
         {activePage === 'dashboard' && <DashboardScreen />}
-        {activePage === 'manual-input' && <ManualInputScreen />}
+        {activePage === 'manual-input' && (
+          <ManualInputScreen apiBaseUrl={apiBaseUrl} />
+        )}
+
         {activePage === 'learning' && <LearningScreen />}
         {activePage === 'settings' && (
           <SettingsScreen
@@ -144,7 +152,6 @@ function App() {
     } catch (e) {
       console.error("Failed to save user data to AsyncStorage:", e);
     }
-    setActivePage('dashboard'); // Redirect to dashboard after login/registration
   };
 
   /**
@@ -158,7 +165,6 @@ function App() {
     } catch (e) {
       console.error("Failed to remove user data from AsyncStorage:", e);
     }
-    setActivePage('home'); // Go to home page after logout
   };
 
   /**
@@ -180,6 +186,7 @@ function App() {
   return (
     // SafeAreaProvider MUST wrap your entire application at the highest level
     // for useSafeAreaInsets to work correctly throughout your component tree.
+    
     <SafeAreaProvider style={globalStyles.safeArea}>
       <RootAppContent
         activePage={activePage}

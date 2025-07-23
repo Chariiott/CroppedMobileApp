@@ -1,7 +1,7 @@
 // aquaponic-assistant/src/api.js
 
 // Declare API_BASE_URL as a mutable variable
-let API_BASE_URL = 'https://0993-2a09-bac5-55f9-18d2-00-279-4b.ngrok-free.app/api'; // Default fallback URL
+let API_BASE_URL = 'https://a4608497f201.ngrok-free.app/api'; // Default fallback URL
 
 /**
  * Sets the API base URL dynamically.
@@ -105,3 +105,19 @@ export const logoutUser = async (token) => {
     // In real API, invalidate token/session
     return true;
 };
+
+export const postDataToApi = async (endpoint, bodyObj) => {
+  const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bodyObj),
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(text || `POST failed with status ${response.status}`);
+  }
+
+  return text;
+};
+

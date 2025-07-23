@@ -1,172 +1,141 @@
-// aquaponic-assistant/src/screens/ManualInputScreen.js
-import React, { useState, useCallback } from 'react'; // Added useState, useCallback
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native'; // Added RefreshControl
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { globalStyles } from '../styles/appStyles';
+import { fetchDataFromApi, postDataToApi } from '../api';
 
-/**
- * ManualInputScreen component: Allows users to manually input data like sensor readings or observations.
- * Adapted for React Native components and styling.
- */
+
 const ManualInputScreen = () => {
-  const [refreshing, setRefreshing] = useState(false);
+  const [sensors, setSensors] = useState([]);
+  const [selectedSensorId, setSelectedSensorId] = useState(null);
+  const [value, setValue] = useState('');
+  const [unit, setUnit] = useState('');
+  const [loadingSensors, setLoadingSensors] = useState(false);
+  const [sensorError, setSensorError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Simulated refresh for ManualInputScreen (as it uses static content)
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    console.log('Refreshing Manual Input screen...');
-    // Simulate data fetching/re-initialization
-    setTimeout(() => {
-      setRefreshing(false);
-      console.log('Manual Input screen refresh complete.');
-    }, 1500); // Simulate a 1.5 second loading time
+  // Same fetch pattern as DashboardScreen
+  const fetchData = async (endpoint, setData, setLoading, setError) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchDataFromApi(endpoint);
+      if (Array.isArray(data)) {
+        setData(data);
+      } else {
+        setData([]);
+        setError('Unexpected API format. Expected an array.');
+      }
+    } catch (error) {
+      setError(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData('Sensors/GetAllSensors', setSensors, setLoadingSensors, setSensorError);
   }, []);
 
+  const handleSensorChange = (sensorId) => {
+    setSelectedSensorId(sensorId);
+    const selected = sensors.find(sensor => sensor.SensorId === sensorId);
+    setUnit(selected?.Unit || '');
+  };
+
+
+  const handleSubmit = async () => {
+    if (!selectedSensorId || !value || !unit) {
+      Alert.alert('Validation Error', 'Please select a sensor and enter a value.');
+      return;
+    }
+
+    const payload = {
+      SensorId: selectedSensorId,
+      Value: parseFloat(value),
+      Unit: unit
+    };
+
+    console.log("Submitting:", payload);
+
+    setSubmitting(true);
+    try {
+      const result = await postDataToApi('SensorReadings/AddSensorReading', payload);
+      console.log("POST response:", result);
+
+      Alert.alert('Success', 'Sensor reading submitted!');
+      setSelectedSensorId(null);
+      setUnit('');
+      setValue('');
+    } catch (error) {
+      console.error("POST failed:", error);
+      Alert.alert('Error', error.message);
+    }
+    setSubmitting(false);
+  };
+
+
   return (
-    <ScrollView
-      style={globalStyles.screenContainer}
-      contentContainerStyle={globalStyles.screenContentContainer}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={['#10B981']}
-          tintColor="#10B981"
-          progressBackgroundColor="#ffffff"
-        />
-      }
-    >
-      <Text style={styles.title}>Manual Data Entry</Text>
-      <View style={styles.card}>
-        <Text style={styles.cardText}>
-          Here you can manually input readings or log actions for your farm.
-        </Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>Data Type</Text>
-          {/* In a real RN app, you'd use @react-native-picker/picker */}
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerPlaceholder}>Water Temperature (select)</Text>
-          </View>
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>Value / Description</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="e.g., 25.3 C, pH 6.2, Aphids observed"
-          />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>Notes (Optional)</Text>
-          <TextInput
-            style={styles.textAreaInput}
-            placeholder="Additional details..."
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-        </View>
-        <TouchableOpacity style={styles.submitButton}>
-          <Text style={styles.submitButtonText}>Submit Entry</Text>
-        </TouchableOpacity>
-        <Text style={styles.noteText}>
-          <Text style={styles.noteTextBold}>Note:</Text> This data will be stored in your SQL database via your .NET API.
-        </Text>
-      </View>
-    </ScrollView>
+    <View style={[globalStyles.container, styles.wrapper]}>
+      <Text style={globalStyles.title}>Manual Sensor Input</Text>
+
+      <Text style={styles.label}>Select Sensor</Text>
+      {loadingSensors ? (
+        <ActivityIndicator />
+      ) : (
+        <Picker
+          selectedValue={selectedSensorId}
+          onValueChange={handleSensorChange}
+          style={styles.picker}
+        >
+          <Picker.Item label="-- Select Sensor --" value={null} />
+          {sensors.map(sensor => (
+            <Picker.Item
+              key={sensor.SensorId}
+              label={sensor.Name}
+              value={sensor.SensorId}
+            />
+
+          ))}
+        </Picker>
+      )}
+      {sensorError && <Text style={styles.errorText}>{sensorError}</Text>}
+
+      <Text style={styles.label}>Unit</Text>
+      <Text style={styles.unitBox}>{unit || '--'}</Text>
+
+      <Text style={styles.label}>Value</Text>
+      <TextInput
+        keyboardType="numeric"
+        style={styles.input}
+        placeholder="Enter value"
+        value={value}
+        onChangeText={setValue}
+      />
+
+      {submitting ? (
+        <ActivityIndicator size="large" />
+      ) : (
+        <Button title="Submit Reading" onPress={handleSubmit} />
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 20,
+  wrapper: { padding: 20 },
+  label: { fontWeight: '600', marginTop: 15, marginBottom: 5 },
+  picker: { backgroundColor: '#f0f0f0', borderRadius: 5 },
+  input: {
+    backgroundColor: '#fff', padding: 10,
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 5
   },
-  card: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    marginBottom: 16,
+  unitBox: {
+    backgroundColor: '#eee', padding: 10, borderRadius: 5
   },
-  cardText: {
-    fontSize: 14,
-    color: '#4B5563',
-    marginBottom: 12,
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-  },
-  pickerPlaceholder: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: '#1F2937',
-    backgroundColor: 'white',
-  },
-  textAreaInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    height: 80, // Fixed height for textarea
-    textAlignVertical: 'top', // Align text to top for multiline input
-    color: '#1F2937',
-    backgroundColor: 'white',
-  },
-  submitButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  submitButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  noteText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  noteTextBold: {
-    fontWeight: '600',
-  },
+  errorText: {
+    color: 'red', marginTop: 5
+  }
 });
 
 export default ManualInputScreen;

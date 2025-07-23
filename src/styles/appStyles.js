@@ -12,7 +12,7 @@ export const globalStyles = StyleSheet.create({
   },
   mainContent: {
     flex: 1, // Takes up remaining space
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
     // Padding will be set dynamically in App.js to account for header/footer heights
   },
   screenContainer: {
