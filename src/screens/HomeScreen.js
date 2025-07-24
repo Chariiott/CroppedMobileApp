@@ -1,26 +1,50 @@
 // aquaponic-assistant/src/screens/HomeScreen.js
-import React, { useState, useCallback } from 'react'; // Added useState, useCallback
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native'; // Added RefreshControl
+import React, { useState, useCallback, useEffect } from 'react'; // Added useEffect
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { globalStyles } from '../styles/appStyles';
-import Icon from '../components/Icon'; // Custom Icon component
+import Icon from '../components/Icon';
+import { fetchDataFromApi } from '../api'; // Added API import
 
-/**
- * HomeScreen component: Provides an overview of the aquaponic system and quick actions.
- * Adapted for React Native components and styling.
- */
-const HomeScreen = () => {
+const HomeScreen = ({ setActivePage }) => {
   const [refreshing, setRefreshing] = useState(false);
+  const [sensorReadings, setSensorReadings] = useState([]); // New state
 
-  // Simulated refresh for HomeScreen (as it uses static data)
+  const fetchSensorData = useCallback(async () => {
+    try {
+      const readings = await fetchDataFromApi('SensorReadings/GetAllSensorReadings');
+      setSensorReadings(readings);
+    } catch (err) {
+      console.error("HomeScreen API error:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchSensorData = async () => {
+      try {
+        const data = await fetchDataFromApi('SensorReadings/GetAllSensorReadings');
+        setSensorReadings(data);
+      } catch (err) {
+        console.error("Failed to fetch sensor data:", err);
+      }
+    };
+
+    fetchSensorData();
+  }, []);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    console.log('Refreshing Home screen data...');
-    // Simulate data fetching/re-initialization
-    setTimeout(() => {
-      setRefreshing(false);
-      console.log('Home screen refresh complete.');
-    }, 1500); // Simulate a 1.5 second loading time
-  }, []);
+    fetchSensorData().finally(() => setRefreshing(false));
+  }, [fetchSensorData]);
+
+
+
+  const getLatestValueBySensorId = (sensorId) => {
+    const filtered = sensorReadings
+      .filter(r => r.SensorId === sensorId)
+      .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
+
+    return filtered[0]?.Value ?? '--';
+  };
 
   return (
     <ScrollView
@@ -45,20 +69,26 @@ const HomeScreen = () => {
         </Text>
         <View style={styles.overviewGrid}>
           <View style={[styles.overviewItem, { backgroundColor: '#D1FAE5' }]}>
-            <Text style={[styles.overviewValue, { color: '#047857' }]}>98%</Text>
+            <Text style={[styles.overviewValue, { color: '#047857' }]}>--%</Text>
             <Text style={[styles.overviewLabel, { color: '#059669' }]}>Overall Health</Text>
           </View>
           <View style={[styles.overviewItem, { backgroundColor: '#DBEAFE' }]}>
-            <Text style={[styles.overviewValue, { color: '#2563EB' }]}>30 C</Text>
+            <Text style={[styles.overviewValue, { color: '#2563EB' }]}>
+              {getLatestValueBySensorId(3)} °C
+            </Text>
             <Text style={[styles.overviewLabel, { color: '#3B82F6' }]}>Water Temp</Text>
           </View>
           <View style={[styles.overviewItem, { backgroundColor: '#FEF3C7' }]}>
-            <Text style={[styles.overviewValue, { color: '#D97706' }]}>6.5</Text>
+            <Text style={[styles.overviewValue, { color: '#D97706' }]}>
+              {getLatestValueBySensorId(1)}
+            </Text>
             <Text style={[styles.overviewLabel, { color: '#F59E0B' }]}>pH Level</Text>
           </View>
           <View style={[styles.overviewItem, { backgroundColor: '#EDE9FE' }]}>
-            <Text style={[styles.overviewValue, { color: '#7C3AED' }]}>750 PPM</Text>
-            <Text style={[styles.overviewLabel, { color: '#8B5CF6' }]}>EC Level</Text>
+            <Text style={[styles.overviewValue, { color: '#8B5CF6' }]}>
+              {getLatestValueBySensorId(2)} 
+            </Text>
+            <Text style={[styles.overviewLabel, { color: '#8B5CF6' }]}>EC Level (µS/cm)</Text>
           </View>
         </View>
       </View>
@@ -66,22 +96,37 @@ const HomeScreen = () => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Quick Actions</Text>
         <View style={styles.actionGrid}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#22C55E' }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
+            onPress={() => alert("Take Photo feature is under development.")}
+          >
             <Icon name="camera" size={20} color="white" type="feather"/>
             <Text style={styles.actionButtonText}>Take Photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}
+            onPress={() => setActivePage('learning')}
+          >
             <Icon name="insights" size={20} color="white" type="matico"/>
             <Text style={styles.actionButtonText}>View Insights</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}
+            onPress={() => setActivePage('manual-input')}
+          >
             <Icon name="add-chart" size={20} color="white" type="matico"/>
             <Text style={styles.actionButtonText}>Add Data</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
+            onPress={() => setActivePage('settings')}
+          >
             <Icon name="settings" size={20} color="white" type="feather"/>
             <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
+
         </View>
       </View>
 
@@ -90,15 +135,15 @@ const HomeScreen = () => {
         <View style={styles.alertList}>
           <View style={styles.alertItem}>
             <Icon name="bell" size={20} color="#DC2626" type="feather"/>
-            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Alert:</Text> pH level low (5.8). Action required!</Text>
+            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Alert:</Text></Text>
           </View>
           <View style={styles.alertItem}>
             <Icon name="bell" size={20} color="#EA580C" type="feather"/>
-            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Warning:</Text> Water temperature rising (29.5°C).</Text>
+            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Warning:</Text></Text>
           </View>
           <View style={styles.alertItem}>
             <Icon name="bell" size={20} color="#4B5563" type="feather"/>
-            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Info:</Text> Nutrients added successfully.</Text>
+            <Text style={styles.alertText}><Text style={styles.alertTextBold}>Info:</Text></Text>
           </View>
         </View>
       </View>
@@ -127,12 +172,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151', // Gray-700
+    color: '#374151',
     marginBottom: 12,
   },
   cardText: {
     fontSize: 14,
-    color: '#4B5563', // Gray-600
+    color: '#4B5563',
     marginBottom: 12,
   },
   overviewGrid: {
@@ -141,7 +186,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   overviewItem: {
-    width: '48%', // Approx half width for 2 columns
+    width: '48%',
     padding: 12,
     borderRadius: 6,
     alignItems: 'center',

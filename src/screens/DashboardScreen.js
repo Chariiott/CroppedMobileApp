@@ -1,113 +1,69 @@
 // aquaponic-assistant/src/screens/DashboardScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, RefreshControl, Dimensions } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, RefreshControl, Dimensions } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { globalStyles } from '../styles/appStyles';
 import Icon from '../components/Icon';
-import DataTable from '../components/DataTable';
 import { fetchDataFromApi } from '../api';
 import { LineChart } from 'react-native-chart-kit';
 
-const sensorDisplayData = [
-  { label: 'Water Temp', value: '28.5', unit: '°C', iconName: 'thermometer-half', iconType: 'awe', color: '#3B82F6' },
-  { label: 'pH Level', value: '6.3', unit: '', iconName: 'water-outline', iconType: 'ion', color: '#10B981' },
-  { label: 'EC (Nutrient)', value: '720', unit: 'PPM', iconName: 'lightning-bolt-outline', iconType: 'matco', color: '#8B5CF6' },
-  { label: 'Humidity', value: '70', unit: '%', iconName: 'cloud-rain', iconType: 'feather', color: '#0EA5E9' },
-  { label: 'Light', value: '1200', unit: 'Lux', iconName: 'sun', iconType: 'feather', color: '#F59E0B' },
-];
-
-const plantHealthData = [
-  { name: 'Tomato Plant 1', status: 'Healthy', imageUrl: 'https://placehold.co/60x60/4ADE80/FFFFFF?text=P1' },
-  { name: 'Lettuce Bed 2', status: 'Healthy', imageUrl: 'https://placehold.co/60x60/4ADE80/FFFFFF?text=P2' },
-  { name: 'Basil Pot 3', status: 'Mild Stress', imageUrl: 'https://placehold.co/60x60/FCD34D/FFFFFF?text=P3' },
-  { name: 'Cucumber Vine 4', status: 'Healthy', imageUrl: 'https://placehold.co/60x60/4ADE80/FFFFFF?text=P4' },
-];
-
 const DashboardScreen = () => {
-  const [farmData, setFarmData] = useState([]);
-  const [loadingFarms, setLoadingFarms] = useState(true);
-  const [farmError, setFarmError] = useState(null);
-
-  const [plantData, setPlantData] = useState([]);
-  const [loadingPlants, setLoadingPlants] = useState(true);
-  const [plantError, setPlantError] = useState(null);
-
-  const [plantSpeciesData, setPlantSpeciesData] = useState([]);
-  const [loadingPlantSpecies, setLoadingPlantSpecies] = useState(true);
-  const [plantSpeciesError, setPlantSpeciesError] = useState(null);
-
   const [sensorReadingsData, setSensorReadingsData] = useState([]);
-  const [loadingSensorReadings, setLoadingSensorReadings] = useState(true);
-  const [sensorReadingsError, setSensorReadingsError] = useState(null);
-
   const [sensorsData, setSensorsData] = useState([]);
-  const [loadingSensors, setLoadingSensors] = useState(true);
-  const [sensorsError, setSensorsError] = useState(null);
-
-  const [usersData, setUsersData] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [usersError, setUsersError] = useState(null);
-
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [visibleChartIds, setVisibleChartIds] = useState([]);
+  const [selectedSensorToAdd, setSelectedSensorToAdd] = useState(null);
 
-  const [chartVisibility, setChartVisibility] = useState({});
-
-
-  const toggleChartVisibility = (sensorId) => {
-    setChartVisibility(prev => ({
-      ...prev,
-      [sensorId]: !prev[sensorId]
-    }));
-  };
+  const screenWidth = Dimensions.get("window").width;
 
 
-  const fetchData = async (endpoint, setData, setLoading, setError) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchDataFromApi(endpoint);
-      if (Array.isArray(data)) {
-        setData(data);
-      } else {
-        setData([]);
-        setError("API returned data in an unexpected format. Expected an array.");
-      }
-    } catch (error) {
-      setError(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+   const appFeatures = [
+      { icon: "bell", label: "Notifications", type: "feather" },
+      { icon: "camera", label: "Camera" , type: "feather" },
+      { icon: "map-pin", label: "Location", type: "feather"  },
+      { icon: "wifi-off", label: "Offline Mode", type: "feather"  },
+      { icon: "search", label: "Search" , type: "feather" },
+      { icon: "filter", label: "Filter By" , type: "feather" },
+      { icon: "sort", label: "Sort By", type: "matco"  },
+    ];
+
+
 
   const fetchAllDashboardData = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      fetchData('Farms/GetAllFarms', setFarmData, setLoadingFarms, setFarmError),
-      fetchData('Plants/GetAllPlants', setPlantData, setLoadingPlants, setPlantError),
-      fetchData('PlantSpecies/GetAllPlantSpecies', setPlantSpeciesData, setLoadingPlantSpecies, setPlantSpeciesError),
-      fetchData('SensorReadings/GetAllSensorReadings', setSensorReadingsData, setLoadingSensorReadings, setSensorReadingsError),
-      fetchData('Sensors/GetAllSensors', setSensorsData, setLoadingSensors, setSensorsError),
-      fetchData('Users/GetAllUsers', setUsersData, setLoadingUsers, setUsersError),
-    ]);
+    try {
+      const [sensorReadings, sensors] = await Promise.all([
+        fetchDataFromApi('SensorReadings/GetAllSensorReadings'),
+        fetchDataFromApi('Sensors/GetAllSensors'),
+      ]);
+      setSensorReadingsData(sensorReadings);
+      setSensorsData(sensors);
+    } catch (e) {
+      console.error("Dashboard fetch error:", e);
+    }
     setRefreshing(false);
-  }, []);
+    setLoading(false);
+  }, [visibleChartIds.length]);
 
   useEffect(() => {
     fetchAllDashboardData();
   }, [fetchAllDashboardData]);
 
-  const onRefresh = useCallback(() => {
-    fetchAllDashboardData();
-  }, [fetchAllDashboardData]);
-
-  const handleFeatureClick = (feature) => {
-    alert(`${feature} feature under development.`);
-  };
-
-  const screenWidth = Dimensions.get("window").width;
-
   const getSensorName = (sensorId) => {
     const sensor = sensorsData.find(s => s.SensorId === parseInt(sensorId));
     return sensor?.Name || `Sensor ID ${sensorId}`;
+  };
+
+  const handleAddChart = () => {
+    if (selectedSensorToAdd && !visibleChartIds.includes(selectedSensorToAdd)) {
+      setVisibleChartIds(prev => [...prev, selectedSensorToAdd]);
+      setSelectedSensorToAdd(null);
+    }
+  };
+
+  const handleRemoveChart = (sensorId) => {
+    setVisibleChartIds(prev => prev.filter(id => id !== sensorId));
   };
 
   const getSensorCharts = () => {
@@ -119,129 +75,102 @@ const DashboardScreen = () => {
       grouped[reading.SensorId].push(reading);
     });
 
-    return Object.entries(grouped)
-      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-      .map(([sensorId, readings]) => {
-        const sorted = readings.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
-        const labels = sorted.map(r => new Date(r.Timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }));
-        const data = sorted.map(r => r.Value);
-        const isVisible = chartVisibility[sensorId];
+    
+   
 
-        return (
-          <View key={sensorId} style={{ marginBottom: 16 }}>
-            <TouchableOpacity
-              onPress={() => toggleChartVisibility(sensorId)}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                backgroundColor: '#F9FAFB',
-                borderRadius: 6,
-                borderColor: '#D1D5DB',
-                borderWidth: 1,
-                marginBottom: 6,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>
-                {getSensorName(sensorId)}
-              </Text>
-              <Icon
-                name={isVisible ? 'chevron-up' : 'chevron-down'}
-                type="feather"
-                size={18}
-                color="#6B7280"
-              />
+    return visibleChartIds.map((sensorId) => {
+      const readings = grouped[sensorId] || [];
+      const sorted = readings.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+      const labels = sorted.map(r => new Date(r.Timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }));
+      const data = sorted.map(r => r.Value);
+
+      return (
+        <View key={sensorId} style={{ marginBottom: 20 }}>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>{getSensorName(sensorId)}</Text>
+            <TouchableOpacity onPress={() => handleRemoveChart(sensorId)}>
+              <Icon name="x-circle" type="feather" size={20} color="#DC2626" />
             </TouchableOpacity>
-
-            {isVisible && (
-              <LineChart
-                data={{ labels, datasets: [{ data }] }}
-                width={screenWidth - 32}
-                height={220}
-                chartConfig={{
-                  backgroundColor: '#ffffff',
-                  backgroundGradientFrom: '#ffffff',
-                  backgroundGradientTo: '#ffffff',
-                  decimalPlaces: 2,
-                  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
-                  propsForDots: {
-                    r: '3',
-                    strokeWidth: '1',
-                    stroke: '#10B981',
-                  },
-                }}
-                bezier
-                style={{ borderRadius: 8 }}
-              />
-            )}
           </View>
-        );
-      });
+          <LineChart
+            data={{ labels, datasets: [{ data }] }}
+            width={screenWidth - 32}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 2,
+              color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
+              propsForDots: {
+                r: '3',
+                strokeWidth: '1',
+                stroke: '#10B981',
+              },
+            }}
+            bezier
+            style={{ borderRadius: 8 }}
+          />
+        </View>
+      );
+    });
   };
 
+  const availableSensorOptions = sensorsData.filter(
+    s => !visibleChartIds.includes(s.SensorId)
+  );
+
+  const handleFeatureClick = (feature) => {
+    alert(`${feature} feature under development.`);
+  };
 
   return (
     <ScrollView
       style={globalStyles.screenContainer}
       contentContainerStyle={globalStyles.screenContentContainer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#10B981']} tintColor="#10B981" progressBackgroundColor="#ffffff" />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={fetchAllDashboardData}
+          colors={['#10B981']}
+          tintColor="#10B981"
+        />
+      }
     >
-      {/* <DataTable title="Your Farms" data={farmData} loading={loadingFarms} error={farmError} />
-      <DataTable title="All Plants" data={plantData} loading={loadingPlants} error={plantError} />
-      <DataTable title="Plant Species" data={plantSpeciesData} loading={loadingPlantSpecies} error={plantSpeciesError} />
-      <DataTable title="Sensor Readings" data={sensorReadingsData} loading={loadingSensorReadings} error={sensorReadingsError} />
-      <DataTable title="All Sensors" data={sensorsData} loading={loadingSensors} error={sensorsError} />
-      <DataTable title="All Users" data={usersData} loading={loadingUsers} error={usersError} /> */}
-
-      
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Historical Sensor Data</Text>
         {getSensorCharts()}
+
+        {availableSensorOptions.length > 0 && (
+          <View style={styles.addChartContainer}>
+            <Picker
+              selectedValue={selectedSensorToAdd}
+              onValueChange={(itemValue) => setSelectedSensorToAdd(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select a sensor to add" value={null} />
+              {availableSensorOptions.map(sensor => (
+                <Picker.Item key={sensor.SensorId} label={sensor.Name} value={sensor.SensorId} />
+              ))}
+            </Picker>
+            <TouchableOpacity onPress={handleAddChart} style={styles.addButton}>
+              <Icon name="plus" type="feather" size={18} color="white" />
+              <Text style={styles.addButtonText}>Add Chart</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-
-      {/* <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Plant Health Overview</Text>
-        <View style={styles.plantHealthList}>
-          {plantHealthData.map((plant, index) => (
-            <View key={index} style={styles.plantHealthCard}>
-              <Image source={{ uri: plant.imageUrl }} style={styles.plantHealthImage} />
-              <View>
-                <Text style={styles.plantHealthName}>{plant.name}</Text>
-                <Text style={[styles.plantHealthStatus, { color: plant.status === 'Healthy' ? '#059669' : '#D97706' }]}> <Icon name="leaf-outline" size={16} type="ion" /> {plant.status} </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View> */}
-
-
-{/* 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Current Readings</Text>
-        <View style={styles.sensorGrid}>
-          {sensorDisplayData.map((sensor, index) => (
-            <View key={index} style={[styles.sensorCard, { borderColor: sensor.color, backgroundColor: 'white' }]}>
-              <Icon name={sensor.iconName} size={28} color={sensor.color} type={sensor.iconType} />
-              <Text style={styles.sensorLabel}>{sensor.label}</Text>
-              <Text style={styles.sensorValue}>{sensor.value}<Text style={styles.sensorUnit}>{sensor.unit}</Text></Text>
-            </View>
-          ))}
-        </View>
-      </View> */}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Features</Text>
         <View style={styles.featureGrid}>
-          {["bell", "camera", "map-pin", "wifi-off", "search", "filter"].map((icon, index) => (
-            <TouchableOpacity key={index} onPress={() => handleFeatureClick(icon)} style={styles.featureButton}>
-              <Icon name={icon} size={20} color="#4B5563" type="feather" />
-              <Text style={styles.featureButtonText}>{icon}</Text>
-            </TouchableOpacity>
-          ))}
+          {appFeatures.map(({ icon, label , type}, index) => (
+            <TouchableOpacity key={index} onPress={() => handleFeatureClick(label)} style={styles.featureButton}>
+                <Icon name={icon} size={20} color="#4B5563" type={type}/>
+                <Text style={styles.featureButtonText}>{label}</Text>
+              </TouchableOpacity>
+            ))}
         </View>
       </View>
     </ScrollView>
@@ -251,18 +180,57 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937', marginBottom: 12 },
-  sensorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  sensorCard: { width: '48%', padding: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center', marginBottom: 8, elevation: 1 },
-  sensorLabel: { fontSize: 13, fontWeight: '500', color: '#4B5563', marginTop: 4 },
-  sensorValue: { fontSize: 22, fontWeight: 'bold', marginTop: 4 },
-  sensorUnit: { fontSize: 14, fontWeight: 'normal', marginLeft: 2 },
-  plantHealthCard: { backgroundColor: 'white', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', marginBottom: 8, elevation: 1 },
-  plantHealthImage: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
-  plantHealthName: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-  plantHealthStatus: { fontSize: 13, marginTop: 2 },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  chartTitle: { fontSize: 16, fontWeight: '600', color: '#374151' },
+  addChartContainer: {
+    marginTop: 12,
+    backgroundColor: '#ffffff',
+    padding: 12,
+    borderRadius: 6,
+    borderColor: '#D1D5DB',
+    borderWidth: 1,
+  },
+  picker: {
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    padding: 10,
+    borderRadius: 6,
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 8,
+    fontSize: 14,
+  },
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  featureButton: { width: '48%', padding: 12, backgroundColor: 'white', borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', marginBottom: 8, elevation: 1 },
-  featureButtonText: { color: '#374151', fontWeight: '500', marginLeft: 8, fontSize: 13 },
+  featureButton: {
+    width: '48%',
+    padding: 12,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    marginBottom: 8,
+    elevation: 1,
+  },
+  featureButtonText: {
+    color: '#374151',
+    fontWeight: '500',
+    marginLeft: 8,
+    fontSize: 13,
+  },
 });
 
 export default DashboardScreen;

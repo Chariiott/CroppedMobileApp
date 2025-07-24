@@ -72,15 +72,17 @@ const DataTable = ({ title, data, loading, error }) => {
               ))}
             </View>
             {/* Table Body */}
-            {data.map((row, rowIndex) => (
-              <View key={row.id || rowIndex} style={styles.tableRow}>
-                {headers.map((header, colIndex) => (
-                  <Text key={colIndex} style={styles.tableCell}>
-                    {String(row[header] === null || row[header] === undefined ? '' : row[header])}
-                  </Text>
-                ))}
-              </View>
-            ))}
+            <ScrollView style={styles.tableBody} nestedScrollEnabled={true}>
+              {data.map((row, rowIndex) => (
+                <View key={row.id || rowIndex} style={styles.tableRow}>
+                  {headers.map((header, colIndex) => (
+                    <Text key={colIndex} style={styles.tableCell}>
+                      {String(row[header] === null || row[header] === undefined ? '' : row[header])}
+                    </Text>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </ScrollView>
       </View>
@@ -176,6 +178,10 @@ const styles = StyleSheet.create({
     minWidth: 80, // Ensure data cells have a minimum width
     paddingHorizontal: 6,
   },
+  tableBody: {
+    maxHeight: 320, // ≈ fits 10 rows depending on device
+  },
+
 });
 
 export default DataTable;

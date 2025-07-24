@@ -1,25 +1,30 @@
 // aquaponic-assistant/src/screens/LearningScreen.js
-import React, { useState, useCallback } from 'react'; // Added useState, useCallback
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native'; // Added RefreshControl
+import React, { useState, useCallback, useEffect } from 'react'; // Added useEffect
+import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { globalStyles } from '../styles/appStyles';
+import { fetchDataFromApi } from '../api'; // Added
 
-/**
- * LearningScreen component: Provides resources and a feedback mechanism.
- * Adapted for React Native components and styling.
- */
 const LearningScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
+  const [sensorReadings, setSensorReadings] = useState([]); // New state
 
-  // Simulated refresh for LearningScreen (as it uses static content)
+  const fetchSensorData = useCallback(async () => {
+    try {
+      const readings = await fetchDataFromApi('SensorReadings/GetAllSensorReadings');
+      setSensorReadings(readings);
+    } catch (err) {
+      console.error("LearningScreen API error:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSensorData();
+  }, [fetchSensorData]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    console.log('Refreshing Learning screen content...');
-    // Simulate data fetching/re-initialization
-    setTimeout(() => {
-      setRefreshing(false);
-      console.log('Learning screen refresh complete.');
-    }, 1500); // Simulate a 1.5 second loading time
-  }, []);
+    fetchSensorData().finally(() => setRefreshing(false));
+  }, [fetchSensorData]);
 
   return (
     <ScrollView
@@ -50,13 +55,7 @@ const LearningScreen = () => {
         <Text style={styles.cardText}>
           Your feedback helps us make the app better! Please share your thoughts.
         </Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>Type of Feedback</Text>
-          {/* In a real RN app, you'd use @react-native-picker/picker */}
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerPlaceholder}>General Feedback (select)</Text>
-          </View>
-        </View>
+       
         <View style={styles.formGroup}>
           <Text style={styles.formLabel}>Your Feedback</Text>
           <TextInput
@@ -67,9 +66,13 @@ const LearningScreen = () => {
             textAlignVertical="top"
           />
         </View>
-        <TouchableOpacity style={styles.submitButton}>
+        <TouchableOpacity 
+          style={styles.submitButton}
+          onPress={() => alert("This feature is under development.")}
+        >
           <Text style={styles.submitButtonText}>Submit Feedback</Text>
         </TouchableOpacity>
+
       </View>
     </ScrollView>
   );

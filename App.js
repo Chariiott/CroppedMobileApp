@@ -21,10 +21,6 @@ import FooterNav from './src/components/FooterNav.js'; // Ensure correct import 
 // Import setApiBaseUrl from your api.js
 import { setApiBaseUrl } from './src/api';
 
-import bcrypt from 'bcryptjs';
-
-
-
 
 const { height } = Dimensions.get('window'); // Get screen height for responsive padding
 
@@ -56,7 +52,7 @@ const RootAppContent = ({ activePage, setActivePage, currentUser, handleAuthSucc
           paddingBottom: height * 0.08 + insets.bottom // Adjusted from 0.075 to account for footer + safe area
         }
       ]}>
-        {activePage === 'home' && <HomeScreen />}
+        {activePage === 'home' && <HomeScreen setActivePage={setActivePage} />}
         {activePage === 'dashboard' && <DashboardScreen />}
         {activePage === 'manual-input' && (
           <ManualInputScreen apiBaseUrl={apiBaseUrl} />

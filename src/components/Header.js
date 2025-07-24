@@ -18,7 +18,7 @@ const Header = ({ title, currentUser }) => (
       <View style={styles.userInfo}>
         <Feather name="user" size={16} color="#6B7280" />
         <Text style={styles.userName}>
-          {currentUser.email ? currentUser.email.split('@')[0] : 'User'}
+           {currentUser.Username || currentUser.Email?.split('@')[0] || 'User'}
         </Text>
       </View>
     )}

@@ -11,13 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { Feather } from '@expo/vector-icons';
 import { globalStyles } from '../styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchDataFromApi, postDataToApi } from '../api';
 import bcrypt from 'bcryptjs';
+import DataTable from '../components/DataTable'; // ✅ You already have this
 
-// Fallback RNG for Expo/React Native environments
 bcrypt.setRandomFallback(len => {
   const buf = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -38,9 +39,15 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    setApiInputUrl(apiBaseUrl);
-  }, [apiBaseUrl]);
+  const [visibleTables, setVisibleTables] = useState([]);
+  const [selectedTableToAdd, setSelectedTableToAdd] = useState(null);
+  const [tableDataMap, setTableDataMap] = useState({}); // Holds table data keyed by table name
+  const [tableLoadingMap, setTableLoadingMap] = useState({});
+  const [tableErrorMap, setTableErrorMap] = useState({});
+
+  const tableOptions = [
+    'Users', 'Farms', 'Sensors', 'SensorReadings', 'Plants', 'PlantSpecies'
+  ];
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -48,6 +55,67 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
       setRefreshing(false);
     }, 1500);
   }, []);
+
+  useEffect(() => {
+    setApiInputUrl(apiBaseUrl);
+  }, [apiBaseUrl]);
+
+  const handleAddTable = async () => {
+    if (selectedTableToAdd && !visibleTables.includes(selectedTableToAdd)) {
+      setVisibleTables(prev => [...prev, selectedTableToAdd]);
+      await fetchTableData(selectedTableToAdd);
+      setSelectedTableToAdd(null);
+    }
+  };
+
+  const handleRemoveTable = (tableName) => {
+    setVisibleTables(prev => prev.filter(t => t !== tableName));
+  };
+
+  const fetchTableData = async (tableName) => {
+    setTableLoadingMap(prev => ({ ...prev, [tableName]: true }));
+    setTableErrorMap(prev => ({ ...prev, [tableName]: null }));
+
+    try {
+      const result = await fetchDataFromApi(`${tableName}/GetAll${tableName}`);
+      setTableDataMap(prev => ({ ...prev, [tableName]: result }));
+    } catch (error) {
+      setTableErrorMap(prev => ({ ...prev, [tableName]: error.message }));
+    } finally {
+      setTableLoadingMap(prev => ({ ...prev, [tableName]: false }));
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginInput || !password) {
+      Alert.alert("Missing Info", "Fill in login and password.");
+      return;
+    }
+
+    try {
+      const users = await fetchDataFromApi('Users/GetAllUsers');
+
+      const foundUser = users.find(user =>
+        (user.Email.toLowerCase() === loginInput.toLowerCase() ||
+        user.Username.toLowerCase() === loginInput.toLowerCase()) &&
+        bcrypt.compareSync(password, user.PasswordHash)
+      );
+
+      if (foundUser) {
+        await AsyncStorage.setItem('currentUser', JSON.stringify(foundUser));
+        onAuthSuccess(foundUser);
+        setLoginInput('');
+        setPassword('');
+        console.log("User logged in:", foundUser);
+        Alert.alert("Login Success", `Welcome ${foundUser.Username}`);
+      } else {
+        Alert.alert("Login Failed", "Incorrect username/email or password.");
+      }
+    } catch (err) {
+      console.log("Login error:", err);
+      Alert.alert("Login Error", err.message);
+    }
+  };
 
   const handleRegister = async () => {
     if (!email || !username || !password) {
@@ -85,37 +153,6 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
     }
   };
 
-  const handleLogin = async () => {
-    if (!loginInput || !password) {
-      Alert.alert("Missing Info", "Fill in login and password.");
-      return;
-    }
-
-    try {
-      const users = await fetchDataFromApi('Users/GetAllUsers');
-
-      const foundUser = users.find(user =>
-        (user.Email.toLowerCase() === loginInput.toLowerCase() ||
-         user.Username.toLowerCase() === loginInput.toLowerCase()) &&
-        bcrypt.compareSync(password, user.PasswordHash)
-      );
-
-      if (foundUser) {
-        await AsyncStorage.setItem('currentUser', JSON.stringify(foundUser));
-        onAuthSuccess(foundUser);
-        setLoginInput('');
-        setPassword('');
-        console.log("User logged in:", foundUser);
-        Alert.alert("Login Success", `Welcome ${foundUser.Username}`);
-      } else {
-        Alert.alert("Login Failed", "Incorrect username/email or password.");
-      }
-    } catch (err) {
-      console.log("Login error:", err);
-      Alert.alert("Login Error", err.message);
-    }
-  };
-
   const handleLogout = async () => {
     await AsyncStorage.removeItem('currentUser');
     onSignOut();
@@ -123,15 +160,6 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
     Alert.alert("Logged Out", "User data cleared.");
   };
 
-  const handleSaveApiUrl = () => {
-    if (!apiInputUrl.startsWith('http://') && !apiInputUrl.startsWith('https://')) {
-      Alert.alert("Invalid URL", "Must start with http:// or https://");
-      return;
-    }
-    const formatted = apiInputUrl.endsWith('/api') ? apiInputUrl : `${apiInputUrl}/api`;
-    setApiBaseUrlAndPersist(formatted);
-    Alert.alert("API URL Saved", `Set to:\n${formatted}`);
-  };
 
   const passwordInput = (value, onChange) => (
     <View style={styles.passwordRow}>
@@ -143,17 +171,24 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
         onChangeText={onChange}
       />
       <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-        <Feather
-          name={showPassword ? 'eye-off' : 'eye'}
-          size={20}
-          color="#6B7280"
-          style={{ marginLeft: 10 }}
-        />
+        <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#6B7280" style={{ marginLeft: 10 }} />
       </TouchableOpacity>
     </View>
   );
 
-  return (
+  const handleSaveApiUrl = () => {
+    if (!apiInputUrl.startsWith('http://') && !apiInputUrl.startsWith('https://')) {
+      Alert.alert("Invalid URL", "Must start with http:// or https://");
+      return;
+    }
+    const formatted = apiInputUrl.endsWith('/api') ? apiInputUrl : `${apiInputUrl}/api`;
+    setApiBaseUrlAndPersist(formatted);
+    Alert.alert("API URL Saved", `Set to:\n${formatted}`);
+  };
+
+  
+
+   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
@@ -251,7 +286,6 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
             <Text style={styles.buttonText}>Logout</Text>
           </TouchableOpacity>
         )}
-
         <View style={styles.card}>
           <Text style={styles.cardTitle}>API Configuration</Text>
           <Text style={styles.infoText}>Current API Base URL:</Text>
@@ -273,6 +307,42 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
             <Text style={styles.buttonText}>Save API URL</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>SQL Tables Viewer</Text>
+          <Picker
+            selectedValue={selectedTableToAdd}
+            onValueChange={(itemValue) => setSelectedTableToAdd(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select a table to view" value={null} />
+            {tableOptions.filter(t => !visibleTables.includes(t)).map(t => (
+              <Picker.Item key={t} label={t} value={t} />
+            ))}
+          </Picker>
+          <TouchableOpacity onPress={handleAddTable} style={[styles.button, { flexDirection: 'row', justifyContent: 'center', backgroundColor: '#10B981' }]}>
+            <Feather name="plus" size={16} color="white" />
+            <Text style={[styles.buttonText, { marginLeft: 8 }]}>Add Table</Text>
+          </TouchableOpacity>
+        </View>
+
+        {visibleTables.map(table  => (
+          <View key={table} style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.cardTitle}>{table + " Table "}</Text>
+              <TouchableOpacity onPress={() => handleRemoveTable(table)}>
+                <Feather name="x-circle" size={20} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+            <DataTable
+              title={table + " Data "}
+              data={tableDataMap[table]}
+              loading={tableLoadingMap[table]}
+              error={tableErrorMap[table]}
+            />
+          </View>
+        ))}
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
