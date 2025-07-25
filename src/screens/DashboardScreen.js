@@ -148,6 +148,7 @@ const DashboardScreen = () => {
               selectedValue={selectedSensorToAdd}
               onValueChange={(itemValue) => setSelectedSensorToAdd(itemValue)}
               style={[styles.picker, { color: '#000' }]}
+              dropdownIconColor="#6B7280"
             >
               <Picker.Item label="Select a sensor to add" value={null} />
               {availableSensorOptions.map(sensor => (
