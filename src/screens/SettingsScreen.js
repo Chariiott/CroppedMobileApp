@@ -357,7 +357,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 12 },
   input: {
     borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12,
-    fontSize: 14, color: '#1F2937', backgroundColor: 'white', marginBottom: 10
+    fontSize: 14, color: '#1F2937', backgroundColor: 'white', marginBottom: 10,
+    color: '#000',
   },
   passwordRow: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 10
@@ -368,7 +369,8 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     borderRadius: 6,
     paddingVertical: 10,
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
+    color: '#000',
   },
   button: {
     backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 6,

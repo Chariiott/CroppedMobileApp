@@ -128,7 +128,8 @@ const styles = StyleSheet.create({
   picker: { backgroundColor: '#f0f0f0', borderRadius: 5 },
   input: {
     backgroundColor: '#fff', padding: 10,
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 5
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 5,
+    color: '#000',
   },
   unitBox: {
     backgroundColor: '#eee', padding: 10, borderRadius: 5
