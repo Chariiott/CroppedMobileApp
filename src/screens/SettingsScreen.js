@@ -165,6 +165,7 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
     <View style={styles.passwordRow}>
       <TextInput
         placeholder="Password"
+        placeholderTextColor="#6B7280"
         style={[styles.input, styles.passwordInput]}
         value={value}
         secureTextEntry={!showPassword}
@@ -225,6 +226,7 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
             <Text style={styles.cardTitle}>Login</Text>
             <TextInput
               placeholder="Email or Username"
+              placeholderTextColor="#6B7280"
               style={styles.input}
               value={loginInput}
               onChangeText={setLoginInput}
@@ -245,12 +247,14 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
             <Text style={styles.cardTitle}>Register</Text>
             <TextInput
               placeholder="Username"
+              placeholderTextColor="#6B7280"
               style={styles.input}
               value={username}
               onChangeText={setUsername}
             />
             <TextInput
               placeholder="Email"
+              placeholderTextColor="#6B7280"
               style={styles.input}
               value={email}
               onChangeText={setEmail}
@@ -298,6 +302,7 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
               value={apiInputUrl}
               onChangeText={setApiInputUrl}
               placeholder="e.g., https://your-server.ngrok.io/api"
+              placeholderTextColor="#6B7280"
               autoCapitalize="none"
               keyboardType="url"
               autoCorrect={false}
@@ -358,7 +363,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12,
     fontSize: 14, color: '#1F2937', backgroundColor: 'white', marginBottom: 10,
-    color: '#000',
+    color: '#000000ff',
   },
   passwordRow: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 10
@@ -370,7 +375,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    color: '#000',
+    color: '#000000ff',
   },
   button: {
     backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 6,

@@ -109,6 +109,7 @@ const ManualInputScreen = () => {
         keyboardType="numeric"
         style={styles.input}
         placeholder="Enter value"
+        placeholderTextColor="#6B7280"
         value={value}
         onChangeText={setValue}
       />

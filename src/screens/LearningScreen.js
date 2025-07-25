@@ -61,6 +61,7 @@ const LearningScreen = () => {
           <TextInput
             style={styles.textAreaInput}
             placeholder="Tell us what you think..."
+            placeholderTextColor="#6B7280"
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 14,
-    color: '#1F2937',
+    color: '#000000ff',
     backgroundColor: 'white',
     color: '#000',
   },
