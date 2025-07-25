@@ -313,7 +313,7 @@ const SettingsScreen = ({ currentUser, onSignOut, onAuthSuccess, apiBaseUrl, set
           <Picker
             selectedValue={selectedTableToAdd}
             onValueChange={(itemValue) => setSelectedTableToAdd(itemValue)}
-            style={styles.picker}
+            style={[styles.picker, { color: '#000' }]}
           >
             <Picker.Item label="Select a table to view" value={null} />
             {tableOptions.filter(t => !visibleTables.includes(t)).map(t => (
