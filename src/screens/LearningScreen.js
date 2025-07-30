@@ -173,6 +173,7 @@ const LearningScreen = () => {
             <TextInput
               style={styles.chatInput}
               placeholder="e.g., What is pH?"
+              placeholderTextColor="#6B7280"
               value={chatInput}
               onChangeText={setChatInput}
             />
