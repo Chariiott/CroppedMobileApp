@@ -1,6 +1,14 @@
 // aquaponic-assistant/src/screens/DashboardScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, RefreshControl, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  Dimensions
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { globalStyles } from '../styles/appStyles';
 import Icon from '../components/Icon';
@@ -14,21 +22,19 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [visibleChartIds, setVisibleChartIds] = useState([]);
   const [selectedSensorToAdd, setSelectedSensorToAdd] = useState(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
 
   const screenWidth = Dimensions.get("window").width;
 
-
-   const appFeatures = [
-      { icon: "bell", label: "Notifications", type: "feather" },
-      { icon: "camera", label: "Camera" , type: "feather" },
-      { icon: "map-pin", label: "Location", type: "feather"  },
-      { icon: "wifi-off", label: "Offline Mode", type: "feather"  },
-      { icon: "search", label: "Search" , type: "feather" },
-      { icon: "filter", label: "Filter By" , type: "feather" },
-      { icon: "sort", label: "Sort By", type: "matco"  },
-    ];
-
-
+  const appFeatures = useMemo(() => [
+    { icon: "bell", label: "Notifications", type: "feather" },
+    { icon: "camera", label: "Camera", type: "feather" },
+    { icon: "map-pin", label: "Location", type: "feather" },
+    { icon: "wifi-off", label: "Offline Mode", type: "feather" },
+    { icon: "search", label: "Search", type: "feather" },
+    { icon: "filter", label: "Filter By", type: "feather" },
+    { icon: "sort", label: "Sort By", type: "matco" },
+  ], []);
 
   const fetchAllDashboardData = useCallback(async () => {
     setRefreshing(true);
@@ -41,89 +47,132 @@ const DashboardScreen = () => {
       setSensorsData(sensors);
     } catch (e) {
       console.error("Dashboard fetch error:", e);
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
     }
-    setRefreshing(false);
-    setLoading(false);
-  }, [visibleChartIds.length]);
+  }, []);
 
   useEffect(() => {
     fetchAllDashboardData();
   }, [fetchAllDashboardData]);
 
-  const getSensorName = (sensorId) => {
+  useEffect(() => {
+    if (sensorsData.length > 0) {
+      const allSensorIds = sensorsData.map(s => s.SensorId);
+      setVisibleChartIds(allSensorIds);
+    }
+  }, [sensorsData]);
+
+  const getSensorName = useCallback((sensorId) => {
     const sensor = sensorsData.find(s => s.SensorId === parseInt(sensorId));
     return sensor?.Name || `Sensor ID ${sensorId}`;
-  };
+  }, [sensorsData]);
 
-  const handleAddChart = () => {
+  const handleAddChart = useCallback(() => {
     if (selectedSensorToAdd && !visibleChartIds.includes(selectedSensorToAdd)) {
       setVisibleChartIds(prev => [...prev, selectedSensorToAdd]);
       setSelectedSensorToAdd(null);
     }
-  };
+  }, [selectedSensorToAdd, visibleChartIds]);
 
-  const handleRemoveChart = (sensorId) => {
+  const handleRemoveChart = useCallback((sensorId) => {
     setVisibleChartIds(prev => prev.filter(id => id !== sensorId));
-  };
+  }, []);
 
-  const getSensorCharts = () => {
-    const grouped = {};
-    sensorReadingsData.forEach((reading) => {
-      if (!grouped[reading.SensorId]) {
-        grouped[reading.SensorId] = [];
-      }
-      grouped[reading.SensorId].push(reading);
-    });
-
-    
-   
-
-    return visibleChartIds.map((sensorId) => {
-      const readings = grouped[sensorId] || [];
-      const sorted = readings.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
-      const labels = sorted.map(r => new Date(r.Timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }));
-      const data = sorted.map(r => r.Value);
-
-      return (
-        <View key={sensorId} style={{ marginBottom: 20 }}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>{getSensorName(sensorId)}</Text>
-            <TouchableOpacity onPress={() => handleRemoveChart(sensorId)}>
-              <Icon name="x-circle" type="feather" size={20} color="#DC2626" />
-            </TouchableOpacity>
-          </View>
-          <LineChart
-            data={{ labels, datasets: [{ data }] }}
-            width={screenWidth - 32}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 2,
-              color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
-              propsForDots: {
-                r: '3',
-                strokeWidth: '1',
-                stroke: '#10B981',
-              },
-            }}
-            bezier
-            style={{ borderRadius: 8 }}
-          />
-        </View>
-      );
-    });
-  };
-
-  const availableSensorOptions = sensorsData.filter(
-    s => !visibleChartIds.includes(s.SensorId)
+  const availableSensorOptions = useMemo(() => 
+    sensorsData.filter(s => !visibleChartIds.includes(s.SensorId)),
+    [sensorsData, visibleChartIds]
   );
 
-  const handleFeatureClick = (feature) => {
+  const handleFeatureClick = useCallback((feature) => {
     alert(`${feature} feature under development.`);
-  };
+  }, []);
+
+  const renderChart = useCallback((sensorId) => {
+    const readings = sensorReadingsData.filter(r => r.SensorId === sensorId);
+    const sorted = readings.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+    const recent = sorted.slice(-15);
+
+    const formattedDates = recent.map(r => ({
+      full: new Date(r.Timestamp).toLocaleString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: 'short'
+      }),
+      short: new Date(r.Timestamp).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short'
+      })
+    }));
+
+    const labels = formattedDates.map((date, index) => 
+      index % 2 === 0 ? date.short : ''
+    );
+
+    const data = recent.map(r => r.Value);
+
+    const handlePointPress = ({ value, index }) => {
+      setSelectedPoint({
+        value,
+        timestamp: formattedDates[index].full,
+        sensorId
+      });
+    };
+
+    return (
+      <View key={sensorId} style={{ marginBottom: 20 }}>
+        <View style={styles.chartHeader}>
+          <Text style={styles.chartTitle}>{getSensorName(sensorId)}</Text>
+          <TouchableOpacity onPress={() => handleRemoveChart(sensorId)}>
+            <Icon name="x-circle" type="feather" size={20} color="#DC2626" />
+          </TouchableOpacity>
+        </View>
+
+        <LineChart
+          data={{ labels, datasets: [{ data }] }}
+          width={screenWidth - 32}
+          height={220}
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#ffffff',
+            decimalPlaces: 2,
+            color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
+            propsForDots: {
+              r: '3',
+              strokeWidth: '1',
+              stroke: '#10B981',
+            },
+            propsForBackgroundLines: {
+              strokeDasharray: "",
+            },
+            dotRadius: 10,
+          }}
+          bezier
+          style={{ borderRadius: 8 }}
+          onDataPointClick={handlePointPress}
+        />
+
+        {selectedPoint?.sensorId === sensorId && (
+          <View style={styles.tooltip}>
+            <Text style={styles.tooltipText}>
+              📅 {selectedPoint.timestamp}
+            </Text>
+            <Text style={styles.tooltipValue}>
+              📊 Value: {selectedPoint.value}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }, [sensorReadingsData, getSensorName, handleRemoveChart, screenWidth, selectedPoint]);
+
+  const charts = useMemo(() => {
+    return visibleChartIds.map(sensorId => renderChart(sensorId));
+  }, [visibleChartIds, renderChart]);
 
   return (
     <ScrollView
@@ -137,22 +186,27 @@ const DashboardScreen = () => {
           tintColor="#10B981"
         />
       }
+      onScrollBeginDrag={() => setSelectedPoint(null)}
     >
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Historical Sensor Data</Text>
-        {getSensorCharts()}
+        {charts}
 
         {availableSensorOptions.length > 0 && (
           <View style={styles.addChartContainer}>
             <Picker
               selectedValue={selectedSensorToAdd}
-              onValueChange={(itemValue) => setSelectedSensorToAdd(itemValue)}
+              onValueChange={setSelectedSensorToAdd}
               style={[styles.picker, { color: '#000' }]}
               dropdownIconColor="#6B7280"
             >
               <Picker.Item label="Select a sensor to add" value={null} />
               {availableSensorOptions.map(sensor => (
-                <Picker.Item key={sensor.SensorId} label={sensor.Name} value={sensor.SensorId} />
+                <Picker.Item 
+                  key={sensor.SensorId} 
+                  label={sensor.Name} 
+                  value={sensor.SensorId} 
+                />
               ))}
             </Picker>
             <TouchableOpacity onPress={handleAddChart} style={styles.addButton}>
@@ -166,12 +220,16 @@ const DashboardScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Features</Text>
         <View style={styles.featureGrid}>
-          {appFeatures.map(({ icon, label , type}, index) => (
-            <TouchableOpacity key={index} onPress={() => handleFeatureClick(label)} style={styles.featureButton}>
-                <Icon name={icon} size={20} color="#4B5563" type={type}/>
-                <Text style={styles.featureButtonText}>{label}</Text>
-              </TouchableOpacity>
-            ))}
+          {appFeatures.map(({ icon, label, type }, index) => (
+            <TouchableOpacity 
+              key={index} 
+              onPress={() => handleFeatureClick(label)} 
+              style={styles.featureButton}
+            >
+              <Icon name={icon} size={20} color="#4B5563" type={type} />
+              <Text style={styles.featureButtonText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </ScrollView>
@@ -180,14 +238,23 @@ const DashboardScreen = () => {
 
 const styles = StyleSheet.create({
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937', marginBottom: 12 },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#1F2937', 
+    marginBottom: 12 
+  },
   chartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
   },
-  chartTitle: { fontSize: 16, fontWeight: '600', color: '#374151' },
+  chartTitle: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#374151' 
+  },
   addChartContainer: {
     marginTop: 12,
     backgroundColor: '#ffffff',
@@ -214,7 +281,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
   },
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  featureGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    justifyContent: 'space-between' 
+  },
   featureButton: {
     width: '48%',
     padding: 12,
@@ -231,6 +302,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     fontSize: 13,
+  },
+  tooltip: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    borderColor: '#10B981',
+    borderWidth: 1,
+    alignSelf: 'flex-start'
+  },
+  tooltipText: {
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  tooltipValue: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2
   },
 });
 
