@@ -1,5 +1,5 @@
-// aquaponic-assistant/src/screens/DashboardScreen.js
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -22,8 +22,11 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [visibleChartIds, setVisibleChartIds] = useState([]);
   const [selectedSensorToAdd, setSelectedSensorToAdd] = useState(null);
-  const [selectedPoint, setSelectedPoint] = useState(null);
+  
 
+  const selectedPointRef = useRef(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  
   const screenWidth = Dimensions.get("window").width;
 
   const appFeatures = useMemo(() => [
@@ -89,90 +92,62 @@ const DashboardScreen = () => {
     alert(`${feature} feature under development.`);
   }, []);
 
-  const renderChart = useCallback((sensorId) => {
-    const readings = sensorReadingsData.filter(r => r.SensorId === sensorId);
-    const sorted = readings.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
-    const recent = sorted.slice(-15);
+ 
+  const chartData = useMemo(() => {
+    const grouped = {};
+    sensorReadingsData.forEach((reading) => {
+      if (!grouped[reading.SensorId]) {
+        grouped[reading.SensorId] = [];
+      }
+      grouped[reading.SensorId].push(reading);
+    });
+    
+    return visibleChartIds.map((sensorId) => {
+      const readings = grouped[sensorId] || [];
+      const sorted = [...readings].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+      const recent = sorted.slice(-15);
 
-    const formattedDates = recent.map(r => ({
-      full: new Date(r.Timestamp).toLocaleString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: 'short'
-      }),
-      short: new Date(r.Timestamp).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short'
-      })
-    }));
+    
+      const formattedDates = recent.map(r => ({
+        full: new Date(r.Timestamp).toLocaleString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: 'short'
+        }),
+        short: new Date(r.Timestamp).toLocaleDateString('en-GB', {
+          hour: '2-digit',
+          day: '2-digit',
+          month: 'short'
+        })
+      }));
 
-    const labels = formattedDates.map((date, index) => 
-      index % 2 === 0 ? date.short : ''
-    );
+      const labels = formattedDates.map((date, index) => 
+        index % 2 === 0 ? date.full : ''
+      );
 
-    const data = recent.map(r => r.Value);
+      const data = recent.map(r => r.Value);
 
-    const handlePointPress = ({ value, index }) => {
-      setSelectedPoint({
-        value,
-        timestamp: formattedDates[index].full,
-        sensorId
-      });
+      return {
+        sensorId,
+        readings: recent,
+        labels,
+        data,
+        formattedDates,
+        sensorName: getSensorName(sensorId)
+      };
+    });
+  }, [sensorReadingsData, visibleChartIds, getSensorName]);
+
+  // Handle point press without causing re-renders
+  const handlePointPress = useCallback((sensorId, value, index, formattedDates) => {
+    selectedPointRef.current = {
+      value,
+      timestamp: formattedDates[index].full,
+      sensorId
     };
-
-    return (
-      <View key={sensorId} style={{ marginBottom: 20 }}>
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>{getSensorName(sensorId)}</Text>
-          <TouchableOpacity onPress={() => handleRemoveChart(sensorId)}>
-            <Icon name="x-circle" type="feather" size={20} color="#DC2626" />
-          </TouchableOpacity>
-        </View>
-
-        <LineChart
-          data={{ labels, datasets: [{ data }] }}
-          width={screenWidth - 32}
-          height={220}
-          chartConfig={{
-            backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#ffffff',
-            backgroundGradientTo: '#ffffff',
-            decimalPlaces: 2,
-            color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
-            propsForDots: {
-              r: '3',
-              strokeWidth: '1',
-              stroke: '#10B981',
-            },
-            propsForBackgroundLines: {
-              strokeDasharray: "",
-            },
-            dotRadius: 10,
-          }}
-          bezier
-          style={{ borderRadius: 8 }}
-          onDataPointClick={handlePointPress}
-        />
-
-        {selectedPoint?.sensorId === sensorId && (
-          <View style={styles.tooltip}>
-            <Text style={styles.tooltipText}>
-              📅 {selectedPoint.timestamp}
-            </Text>
-            <Text style={styles.tooltipValue}>
-              📊 Value: {selectedPoint.value}
-            </Text>
-          </View>
-        )}
-      </View>
-    );
-  }, [sensorReadingsData, getSensorName, handleRemoveChart, screenWidth, selectedPoint]);
-
-  const charts = useMemo(() => {
-    return visibleChartIds.map(sensorId => renderChart(sensorId));
-  }, [visibleChartIds, renderChart]);
+    setTooltipVisible(true);
+  }, []);
 
   return (
     <ScrollView
@@ -186,11 +161,60 @@ const DashboardScreen = () => {
           tintColor="#10B981"
         />
       }
-      onScrollBeginDrag={() => setSelectedPoint(null)}
+      onScrollBeginDrag={() => setTooltipVisible(false)}
     >
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Historical Sensor Data</Text>
-        {charts}
+        
+        {chartData.map(({ sensorId, labels, data, formattedDates, sensorName }) => (
+          <View key={sensorId} style={{ marginBottom: 20 }}>
+            <View style={styles.chartHeader}>
+              <Text style={styles.chartTitle}>{sensorName}</Text>
+              <TouchableOpacity onPress={() => handleRemoveChart(sensorId)}>
+                <Icon name="x-circle" type="feather" size={20} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+
+            <LineChart
+              data={{ labels, datasets: [{ data }] }}
+              width={screenWidth - 32}
+              height={220}
+              chartConfig={{
+                backgroundColor: '#ffffff',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#ffffff',
+                decimalPlaces: 2,
+                color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
+                propsForDots: {
+                  r: '3',
+                  strokeWidth: '1',
+                  stroke: '#10B981',
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: "",
+                },
+                dotRadius: 10,
+              }}
+              bezier
+              style={{ borderRadius: 8 }}
+              onDataPointClick={({ value, index }) => 
+                handlePointPress(sensorId, value, index, formattedDates)
+              }
+            />
+
+            {tooltipVisible && selectedPointRef.current?.sensorId === sensorId && (
+              <View style={styles.tooltip}>
+                <Text style={styles.tooltipText}>
+                  📅 {selectedPointRef.current.timestamp}
+                </Text>
+                <Text style={styles.tooltipValue}>
+                  📊 Value: {selectedPointRef.current.value}
+                </Text>
+              </View>
+            )}
+          </View>
+        ))}
 
         {availableSensorOptions.length > 0 && (
           <View style={styles.addChartContainer}>
