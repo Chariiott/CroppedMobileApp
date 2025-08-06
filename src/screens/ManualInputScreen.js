@@ -87,6 +87,7 @@ const ManualInputScreen = () => {
           selectedValue={selectedSensorId}
           onValueChange={handleSensorChange}
           style={[styles.picker, { color: '#000' }]}
+          dropdownIconColor="#6B7280"
         >
           <Picker.Item label="-- Select Sensor --" value={null} />
           {sensors.map(sensor => (
